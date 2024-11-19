@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poker Empire</title>
+    <style>
+        #gameLog {
+            width: 50%;
+            height: 150px; /* Set the height of the log area */
+            border: 1px solid #ccc;
+            padding: 5px;
+            overflow-y: auto; /* Enable vertical scrolling */
+            background-color: #f9f9f9;
+            font-family: monospace;
+        }
+        #gameLog p {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+<h1>Poker Empire</h1>
+<div id="elMoneyContainer"> Cash: $<span id="elMoney"></span></div>
+<br>
+<div id="logContainer">
+    <h2>Log</h2>
+    <div id="gameLog"></div>
+</div>
+
+<script>
+    var data = {
+        name: "Player",
+        money: 1000.0,
+        ev: -0.1,
+        games_played: 0,
+        tot_games_played: 0,
+        wins: 0,
+        losses: 0,
+    };
+
+    var game = {
+        init() {
+            this.elMoney = document.getElementById("elMoney");
+            this.gameLog = document.getElementById('gameLog');
+
+            let userName = prompt("What should we call you?");
+            if (userName) {
+                data.name = userName;
+            }
+
+            this.addLog(`Welcome, ${data.name}. Your journey has begun.`);
+            this.updateDisplay();
+        },
+        tick() {
+            data.money += 0; // PLACEHOLDER
+            data.tot_money += 0; // PLACEHOLDER
+            this.updateDisplay();
+        },
+        updateDisplay() {
+            // show money with exactly 2 decimal places
+            this.elMoney.innerText = (Math.round(data.money * 100) / 100).toFixed(2);
+        },
+        addLog(message) {
+            const logEntry = document.createElement('p');
+            logEntry.textContent = message;
+            this.gameLog.appendChild(logEntry);
+
+            // Scroll to the bottom of the log
+            this.gameLog.scrollTop = this.gameLog.scrollHeight;
+        },
+        save (savename = 'my_save') {
+            localStorage.setItem(savename, JSON.stringify(savename));
+        },
+        load (savename = 'my_save') {
+            Object.assign(data, JSON.parse(localStorage.getItem(savename) || '{}'));
+            this.init();
+            this.updateDisplay();
+        },
+        clearSave(savename = 'my_save') {
+            localStorage.setItem(savename, '{}');
+            location.reload();
+        },
+        start() {
+            setInterval(() => this.tick(), 1e3);
+            setInterval(() => this.save(), 10e3);
+        },
+    };
+
+    game.load();
+    game.start();
+
+</script>
+</body>
+</html>
