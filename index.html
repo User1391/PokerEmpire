@@ -7,16 +7,45 @@
     <title>Poker Empire</title>
     <style>
         #gameLog {
-            width: 50%;
+            width: 100%;
             height: 150px; /* Set the height of the log area */
             border: 1px solid #ccc;
             padding: 5px;
             overflow-y: auto; /* Enable vertical scrolling */
             background-color: #f9f9f9;
             font-family: monospace;
+            position: relative;
         }
         #gameLog p {
             margin: 0;
+        }
+        .gain {
+            color: green;
+        }
+
+        .loss {
+            color: red;
+        }
+        #logContainer {
+            position: relative;
+            width: 50%;
+
+        }
+        /* janky but seems to work*/
+        #btnClearLog {
+            position: absolute;
+            top: 30%;
+            right: 5px;
+            cursor: pointer;
+            z-index: 1; /* Ensure it stays on top of other content */
+        }
+        #controls {
+            display: flex;
+            align-items: center;
+        }
+
+        #elBuyInContainer {
+            margin-left: 10px;
         }
     </style>
 </head>
@@ -24,9 +53,16 @@
 <h1>Poker Empire</h1>
 <div id="elMoneyContainer"> Cash: $<span id="elMoney"></span></div>
 <br>
+<div id="controls">
+    <button id="btnPlayGame" onclick="game.playGame()">Play Poker</button>
+    <div id="elBuyInContainer"> Buy-in: $<span id="elBuyIn"></span></div>
+</div>
+<br>
 <div id="logContainer">
     <h2>Log</h2>
-    <div id="gameLog"></div>
+    <div id="gameLog">
+    </div>
+    <button id="btnClearLog" onclick="game.clearLog()">Clear Log</button>
 </div>
 
 <script>
@@ -38,12 +74,15 @@
         tot_games_played: 0,
         wins: 0,
         losses: 0,
+        buy_in: 5.0,
     };
 
     var game = {
         init() {
             this.elMoney = document.getElementById("elMoney");
             this.gameLog = document.getElementById('gameLog');
+            this.btnPlayGame = document.getElementById('btnPlayGame');
+            this.elBuyIn = document.getElementById("elBuyIn");
 
             let userName = prompt("What should we call you?");
             if (userName) {
@@ -61,14 +100,41 @@
         updateDisplay() {
             // show money with exactly 2 decimal places
             this.elMoney.innerText = (Math.round(data.money * 100) / 100).toFixed(2);
+            this.elBuyIn.innerText = data.buy_in;
         },
-        addLog(message) {
+        addLog(message, type='') {
             const logEntry = document.createElement('p');
             logEntry.textContent = message;
+            if (type === 'gain') {
+                logEntry.classList.add('gain');
+            } else if (type === 'loss') {
+                logEntry.classList.add('loss');
+            }
             this.gameLog.appendChild(logEntry);
 
             // Scroll to the bottom of the log
             this.gameLog.scrollTop = this.gameLog.scrollHeight;
+        },
+        clearLog () {
+            this.gameLog.innerHTML = '';
+        },
+        playGame() {
+            let outcome = this.simGame();
+            if (outcome > 0) {
+                data.wins++;
+                this.addLog(`${data.name} won $${outcome.toFixed(2)}`, 'gain');
+            } else {
+                data.losses++;
+                this.addLog(`${data.name} lost $${-1*outcome.toFixed(2)}`, 'loss');
+            }
+            data.money += outcome;
+            data.games_played++;
+            data.tot_games_played++;
+            this.updateDisplay();
+        },
+        // ALL OF THE IN-GAME THINGS
+        simGame() {
+            return randomNormal(data.ev * data.buy_in, data.buy_in / 3);
         },
         save (savename = 'my_save') {
             localStorage.setItem(savename, JSON.stringify(savename));
@@ -87,6 +153,17 @@
             setInterval(() => this.save(), 10e3);
         },
     };
+
+    function randomNormal(mean = 0, stdDev = 1) {
+        let u1 = Math.random();
+        let u2 = Math.random();
+
+        // Box-Muller transform
+        let z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+
+        // Scale and shift to match desired mean and standard deviation
+        return z0 * stdDev + mean;
+    }
 
     game.load();
     game.start();
