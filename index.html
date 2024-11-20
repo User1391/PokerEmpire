@@ -6,6 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Poker Empire</title>
     <style>
+        .controls {
+            display: flex;
+            align-items: center;
+        }
+
+        .controls button, .controls div {
+            margin-right: 10px; /* Optional: Space between elements */
+        }
         #gameLog {
             width: 100%;
             height: 150px; /* Set the height of the log area */
@@ -26,6 +34,10 @@
         .loss {
             color: red;
         }
+        .error {
+            color: #d76626;
+        }
+
         #logContainer {
             position: relative;
             width: 50%;
@@ -39,10 +51,7 @@
             cursor: pointer;
             z-index: 1; /* Ensure it stays on top of other content */
         }
-        #controls {
-            display: flex;
-            align-items: center;
-        }
+
 
         #elBuyInContainer {
             margin-left: 10px;
@@ -56,10 +65,16 @@
 <div id="elUnstudiedGamesContainer">Unstudied Games: <span id="elUnstudiedGames"></span></div>
 
 <br>
-<div id="controls">
+<div class="controls">
     <button id="btnPlayGame" onclick="game.playGame()">Play Poker</button>
-    <div id="elBuyInContainer"> Buy-in: $<span id="elBuyIn"></span></div>
+    <div id="elBuyInContainer">Buy-in: $<span id="elBuyIn"></span></div>
 </div>
+<br>
+<div class="controls" id="elPokerBot0Container">
+    <button id="btnBuyPokerBot0" onclick="game.buyPokerBot(0)">Buy Simple Poker Bot ($<span id="elPokerBot0Cost"></span>)</button>
+    <div id="elPokerBot0CntContainer">Simple Bots: <span id="elPokerBot0Cnt"></span></div>
+</div>
+<br>
 <button id="btnStudyGames" onclick="game.studyGame()">Study A Previous Game</button>
 <br>
 <div id="logContainer">
@@ -79,6 +94,7 @@
         wins: 0,
         losses: 0,
         buy_in: 5.0,
+        numPokerBot0: 0,
     };
 
     let game = {
@@ -94,7 +110,9 @@
             this.unstudiedGamesContainer = document.getElementById("elUnstudiedGamesContainer");
             this.moneyContainer = document.getElementById("elMoneyContainer");
             this.buyInContainer = document.getElementById("elBuyInContainer");
-            this.btnClearLog = document.getElementById('btnClearLog');
+            this.pokerBot0Cost = document.getElementById("elPokerBot0Cost");
+            this.pokerBot0Container = document.getElementById("elPokerBot0Container");
+            this.pokerBot0Cnt = document.getElementById("elPokerBot0Cnt");
 
             let userName = prompt("What should we call you?");
             if (userName) {
@@ -107,27 +125,34 @@
         tick() {
             data.money += 0; // PLACEHOLDER
             data.tot_money += 0; // PLACEHOLDER
+            data.ev = Math.max(-0.99, Math.min(data.ev, 0.99));
+            for (let i = 0; i < data.numPokerBot0; i++) {
+                data.money += this.pokerBotPlay(0);
+            }
             this.updateDisplay();
         },
         updateDisplay() {
             // show money with exactly 2 decimal places
             this.elMoney.innerText = (Math.round(data.money * 100) / 100).toFixed(2);
             this.elBuyIn.innerText = data.buy_in;
-
+            this.pokerBot0Cost.innerText = String(this.pokerBotCost(0));
+            this.pokerBot0Cnt.innerText = data.numPokerBot0;
 
             if (data.tot_games_played === 10 && this.elGamesPlayedContainer.hidden) {
                 this.addLog("Your friend suggests you start noting down the number of games you've played.")
             } else if (data.tot_games_played === 50 && this.btnStudyGames.hidden) {
                 this.addLog("What if you tried to learn from your previous failures?");
+            } else if (data.tot_games_played === 200 && this.pokerBot0Container.style.display === 'none') {
+                this.addLog("You find a poker bot that copies your play on the dark web.")
             }
+
             this.elGamesPlayedContainer.hidden = data.tot_games_played < 10;
             this.btnStudyGames.hidden = data.tot_games_played < 50;
             this.unstudiedGamesContainer.hidden = data.tot_games_played < 50;
+            this.pokerBot0Container.style.display = data.tot_games_played < 200 ? 'none' : 'flex';
 
             this.elGamesPlayed.innerText = data.tot_games_played;
             this.unstudiedGames.innerText = data.games_played;
-
-            data.ev = Math.max(-1, Math.min(data.ev, 1));
         },
         addLog(message, type='') {
             const logEntry = document.createElement('p');
@@ -136,7 +161,10 @@
                 logEntry.classList.add('gain');
             } else if (type === 'loss') {
                 logEntry.classList.add('loss');
+            } else if (type === 'error') {
+                logEntry.classList.add('error');
             }
+
             this.gameLog.appendChild(logEntry);
 
             // Scroll to the bottom of the log
@@ -165,7 +193,7 @@
         },
         studyGame() {
             if (data.games_played === 0) {
-                this.addLog("You've studied all the games you've played so far.");
+                this.addLog("You've studied all the games you've played so far.", 'error');
                 return;
             }
             data.games_played--;
@@ -184,6 +212,30 @@
             this.addLog(`You've studied an old game. Your skill improves slightly.`);
             this.updateDisplay();
         },
+        pokerBotCost(botIndex) {
+            // According stackoverflow ** doesn't work on IE
+            return Math.round(100 * Math.pow(1.17, data.numPokerBot0));
+        },
+        buyPokerBot(botIndex) {
+            if (data.money < this.pokerBotCost(botIndex)) {
+                this.addLog("You don't have enough money to buy a poker bot.", 'error');
+            } else {
+                data.money -= this.pokerBotCost(botIndex);
+                data.numPokerBot0++;
+                this.addLog(`You bought a simple poker bot.`);
+                this.updateDisplay();
+            }
+        },
+        pokerBotPlay(botIndex) {
+            switch (botIndex) {
+                case 0:
+                    // simple poker bot just plays the way the player does
+                    return this.simGame();
+                default:
+                    this.addLog("You don't have a poker bot with that index.", 'error');
+            }
+        },
+        // ------------- END -------------------------
         save (savename = 'my_save') {
             localStorage.setItem(savename, JSON.stringify(savename));
         },
@@ -232,6 +284,18 @@
      */
     function sigmoid(x, L = 1, k = 1, x0 = 0) {
         return L / (1 + Math.exp(-k * (x - x0)));
+    }
+
+    // For testing use, RUINS GAMEPLAY
+    function devMode() {
+        data.money = 1e8;
+        data.games_played = 1000;
+        data.tot_games_played = 1000;
+        data.buy_in = 5;
+        data.ev = 0.99;
+        data.wins = 1000;
+        data.losses = 0;
+        game.updateDisplay();
     }
 
     game.load();
