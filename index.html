@@ -53,6 +53,8 @@
 <h1>Poker Empire</h1>
 <div id="elMoneyContainer"> Cash: $<span id="elMoney"></span></div>
 <div id="elGamesPlayedContainer">Games Played: <span id="elGamesPlayed"></span></div>
+<div id="elUnstudiedGamesContainer">Unstudied Games: <span id="elUnstudiedGames"></span></div>
+
 <br>
 <div id="controls">
     <button id="btnPlayGame" onclick="game.playGame()">Play Poker</button>
@@ -68,7 +70,7 @@
 </div>
 
 <script>
-    var data = {
+    let data = {
         name: "Player",
         money: 1000.0,
         ev: -0.5,
@@ -79,7 +81,7 @@
         buy_in: 5.0,
     };
 
-    var game = {
+    let game = {
         init() {
             this.elMoney = document.getElementById("elMoney");
             this.gameLog = document.getElementById('gameLog');
@@ -88,6 +90,11 @@
             this.btnPlayGame = document.getElementById('btnPlayGame');
             this.elBuyIn = document.getElementById("elBuyIn");
             this.btnStudyGames = document.getElementById('btnStudyGames');
+            this.unstudiedGames = document.getElementById("elUnstudiedGames");
+            this.unstudiedGamesContainer = document.getElementById("elUnstudiedGamesContainer");
+            this.moneyContainer = document.getElementById("elMoneyContainer");
+            this.buyInContainer = document.getElementById("elBuyInContainer");
+            this.btnClearLog = document.getElementById('btnClearLog');
 
             let userName = prompt("What should we call you?");
             if (userName) {
@@ -115,8 +122,12 @@
             }
             this.elGamesPlayedContainer.hidden = data.tot_games_played < 10;
             this.btnStudyGames.hidden = data.tot_games_played < 50;
+            this.unstudiedGamesContainer.hidden = data.tot_games_played < 50;
 
-            this.elGamesPlayed.innerText = data.games_played;
+            this.elGamesPlayed.innerText = data.tot_games_played;
+            this.unstudiedGames.innerText = data.games_played;
+
+            data.ev = Math.max(-1, Math.min(data.ev, 1));
         },
         addLog(message, type='') {
             const logEntry = document.createElement('p');
@@ -152,6 +163,27 @@
         simGame() {
             return randomNormal(data.ev * data.buy_in, data.buy_in / 3);
         },
+        studyGame() {
+            if (data.games_played === 0) {
+                this.addLog("You've studied all the games you've played so far.");
+                return;
+            }
+            data.games_played--;
+            const L = 0.5;  // EV caps out at -1 or 1
+            const k = 0.003;  // Adjust the steepness for smoother changes, change this as per your requirement
+            const x0 = 25;  // The halfway point
+
+            // Normalize the EV from [-1, 1] to [0, 2]
+            let normalizedEv = data.ev + 1;
+
+            // Apply sigmoid scaling
+            let scaledEv = sigmoid(data.tot_games_played - data.games_played, L, k, x0);
+
+            // Adjust back to [-1, 1]
+            data.ev = (scaledEv * 2) - 1;
+            this.addLog(`You've studied an old game. Your skill improves slightly.`);
+            this.updateDisplay();
+        },
         save (savename = 'my_save') {
             localStorage.setItem(savename, JSON.stringify(savename));
         },
@@ -160,7 +192,7 @@
             this.init();
             this.updateDisplay();
         },
-        clearSave(savename = 'my_save') {
+            clearSave(savename = 'my_save') {
             localStorage.setItem(savename, '{}');
             location.reload();
         },
@@ -186,6 +218,20 @@
 
         // Scale and shift to match desired mean and standard deviation
         return z0 * stdDev + mean;
+    }
+
+    /**
+     * Sigmoid function to scale the EV.
+     * Ensures that the EV progresses smoothly and asymptotically approaches the boundaries.
+     *
+     * @param {number} x - The input value to be scaled which could be, for example, the total number of games studied.
+     * @param {number} L - The curve's maximum value.
+     * @param {number} k - The steepness of the curve.
+     * @param {number} x0 - The sigmoidal midpoint.
+     * @return {number} Scaled value using a sigmoid function.
+     */
+    function sigmoid(x, L = 1, k = 1, x0 = 0) {
+        return L / (1 + Math.exp(-k * (x - x0)));
     }
 
     game.load();
