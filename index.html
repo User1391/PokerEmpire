@@ -52,11 +52,13 @@
 <body>
 <h1>Poker Empire</h1>
 <div id="elMoneyContainer"> Cash: $<span id="elMoney"></span></div>
+<div id="elGamesPlayedContainer">Games Played: <span id="elGamesPlayed"></span></div>
 <br>
 <div id="controls">
     <button id="btnPlayGame" onclick="game.playGame()">Play Poker</button>
     <div id="elBuyInContainer"> Buy-in: $<span id="elBuyIn"></span></div>
 </div>
+<button id="btnStudyGames" onclick="game.studyGame()">Study A Previous Game</button>
 <br>
 <div id="logContainer">
     <h2>Log</h2>
@@ -69,7 +71,7 @@
     var data = {
         name: "Player",
         money: 1000.0,
-        ev: -0.1,
+        ev: -0.5,
         games_played: 0,
         tot_games_played: 0,
         wins: 0,
@@ -81,8 +83,11 @@
         init() {
             this.elMoney = document.getElementById("elMoney");
             this.gameLog = document.getElementById('gameLog');
+            this.elGamesPlayedContainer = document.getElementById("elGamesPlayedContainer");
+            this.elGamesPlayed = document.getElementById("elGamesPlayed");
             this.btnPlayGame = document.getElementById('btnPlayGame');
             this.elBuyIn = document.getElementById("elBuyIn");
+            this.btnStudyGames = document.getElementById('btnStudyGames');
 
             let userName = prompt("What should we call you?");
             if (userName) {
@@ -101,6 +106,17 @@
             // show money with exactly 2 decimal places
             this.elMoney.innerText = (Math.round(data.money * 100) / 100).toFixed(2);
             this.elBuyIn.innerText = data.buy_in;
+
+
+            if (data.tot_games_played === 10 && this.elGamesPlayedContainer.hidden) {
+                this.addLog("Your friend suggests you start noting down the number of games you've played.")
+            } else if (data.tot_games_played === 50 && this.btnStudyGames.hidden) {
+                this.addLog("What if you tried to learn from your previous failures?");
+            }
+            this.elGamesPlayedContainer.hidden = data.tot_games_played < 10;
+            this.btnStudyGames.hidden = data.tot_games_played < 50;
+
+            this.elGamesPlayed.innerText = data.games_played;
         },
         addLog(message, type='') {
             const logEntry = document.createElement('p');
@@ -132,7 +148,7 @@
             data.tot_games_played++;
             this.updateDisplay();
         },
-        // ALL OF THE IN-GAME THINGS
+        // ----------- ALL OF THE IN-GAME THINGS ------------------------
         simGame() {
             return randomNormal(data.ev * data.buy_in, data.buy_in / 3);
         },
@@ -154,6 +170,13 @@
         },
     };
 
+    /**
+     * Generates a random number following a normal distribution with the specified mean and standard deviation using the Box-Muller transform.
+     *
+     * @param {number} [mean=0] - The mean (μ) of the normal distribution.
+     * @param {number} [stdDev=1] - The standard deviation (σ) of the normal distribution.
+     * @return {number} A random number following the specified normal distribution.
+     */
     function randomNormal(mean = 0, stdDev = 1) {
         let u1 = Math.random();
         let u2 = Math.random();
