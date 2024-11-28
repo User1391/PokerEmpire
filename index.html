@@ -95,6 +95,14 @@
         losses: 0,
         buy_in: 5.0,
         numPokerBot0: 0,
+        achievements: {
+            firstWin: false,
+            tenGames: false,
+            millionaire: false,
+            winStreak: false
+        },
+        currentWinStreak: 0,
+        maxWinStreak: 0
     };
 
     let game = {
@@ -177,14 +185,21 @@
             let outcome = this.simGame();
             if (outcome > 0) {
                 data.wins++;
+                data.currentWinStreak++;
+                data.maxWinStreak = Math.max(data.maxWinStreak, data.currentWinStreak);
                 this.addLog(`${data.name} won $${outcome.toFixed(2)}`, 'gain');
             } else {
                 data.losses++;
+                data.currentWinStreak = 0;
                 this.addLog(`${data.name} lost $${-1*outcome.toFixed(2)}`, 'loss');
             }
             data.money += outcome;
             data.games_played++;
             data.tot_games_played++;
+            
+            // Check achievements after each game
+            this.checkAchievements();
+            
             this.updateDisplay();
         },
         // ----------- ALL OF THE IN-GAME THINGS ------------------------
@@ -251,6 +266,33 @@
         start() {
             setInterval(() => this.tick(), 1e3);
             setInterval(() => this.save(), 10e3);
+        },
+        checkAchievements() {
+            // First Win
+            if (!data.achievements.firstWin && data.wins > 0) {
+                this.unlockAchievement('firstWin', "First Victory", 50);
+            }
+            
+            // Ten Games
+            if (!data.achievements.tenGames && data.tot_games_played >= 10) {
+                this.unlockAchievement('tenGames', "Regular Player", 100);
+            }
+            
+            // Millionaire
+            if (!data.achievements.millionaire && data.money >= 1000000) {
+                this.unlockAchievement('millionaire', "High Roller", 1000);
+            }
+            
+            // Win Streak (3 wins in a row)
+            if (!data.achievements.winStreak && data.currentWinStreak >= 3) {
+                this.unlockAchievement('winStreak', "Hot Streak", 500);
+            }
+        },
+
+        unlockAchievement(id, name, reward) {
+            data.achievements[id] = true;
+            data.money += reward;
+            this.addLog(`🏆 Achievement Unlocked: ${name}! Received $${reward}`, 'gain');
         },
     };
 
